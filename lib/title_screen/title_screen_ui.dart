@@ -6,34 +6,37 @@ import '../assets.dart';
 import '../common/ui_scaler.dart';
 import '../styles.dart';
 import 'package:flutter_animate/flutter_animate.dart';  
-
+import 'package:provider/provider.dart'; 
+import '../common/shader_effect.dart';                   // And this import
+import '../common/ticking_builder.dart'; 
 class TitleScreenUi extends StatelessWidget {
   const TitleScreenUi({
     super.key,
-    required this.difficulty,                            
+    required this.difficulty,
     required this.onDifficultyPressed,
     required this.onDifficultyFocused,
+    required this.onStartPressed,                         // Add this argument
   });
 
   final int difficulty;
   final void Function(int difficulty) onDifficultyPressed;
-  final void Function(int? difficulty) onDifficultyFocused; 
+  final void Function(int? difficulty) onDifficultyFocused;
+  final VoidCallback onStartPressed;                      // Add this attribute
 
   @override
   Widget build(BuildContext context) {
-    return Padding(                                      // Move this const...
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 50), // to here.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 50),
       child: Stack(
         children: [
           /// Title Text
-          const TopLeft(                                 // Add a const here, as well
+          const TopLeft(
             child: UiScaler(
               alignment: Alignment.topLeft,
               child: _TitleText(),
             ),
           ),
 
-          /// Difficulty Btns
           /// Difficulty Btns
           BottomLeft(
             child: UiScaler(
@@ -47,15 +50,15 @@ class TitleScreenUi extends StatelessWidget {
           ),
 
           /// StartBtn
-          BottomRight(                                    // Add from here...
+          BottomRight(
             child: UiScaler(
               alignment: Alignment.bottomRight,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 20, right: 40),
-                child: _StartBtn(onPressed: () {}),
+                child: _StartBtn(onPressed: onStartPressed),  // Edit this line
               ),
             ),
-          ),                                            // to here.
+          ),
         ],
       ),
     );
@@ -122,15 +125,15 @@ class _StartBtnState extends State<_StartBtn> {
 
 
 class _TitleText extends StatelessWidget {
-  const _TitleText({super.key});
+  const _TitleText();
 
   @override
   Widget build(BuildContext context) {
-    return  Column(
+    Widget content = Column(                             // Modify this line
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Gap(20),
+        const Gap(20),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -146,10 +149,32 @@ class _TitleText extends StatelessWidget {
         Text('INTO THE UNKNOWN', style: TextStyles.h3)
             .animate()
             .fadeIn(delay: 1.seconds, duration: .7.seconds),
-      ],     
+      ],
+    );
+    return Consumer<FragmentPrograms?>(                  // Add from here...
+      builder: (context, fragmentPrograms, _) {
+        if (fragmentPrograms == null) return content;
+        return TickingBuilder(
+          builder: (context, time) {
+            return AnimatedSampler(
+              (image, size, canvas) {
+                const double overdrawPx = 30;
+                final shader = fragmentPrograms.ui.fragmentShader();
+                shader
+                  ..setFloat(0, size.width)
+                  ..setFloat(1, size.height)
+                  ..setFloat(2, time)
+                  ..setImageSampler(0, image);
+                Rect rect = Rect.fromLTWH(-overdrawPx, -overdrawPx,
+                    size.width + overdrawPx, size.height + overdrawPx);
+                canvas.drawRect(rect, Paint()..shader = shader);
+              },
+              child: content,
+            );
+          },
         );
-      
-    
+      },
+    );                                                   // to here.
   }
 }
 
